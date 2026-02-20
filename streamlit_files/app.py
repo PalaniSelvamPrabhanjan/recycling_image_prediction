@@ -6,9 +6,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 
 st.set_page_config(
     page_title="EcoScan · Waste Classifier",
@@ -16,7 +14,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
-
 
 DISPOSAL_INFO = {
     "battery": {
@@ -101,33 +98,22 @@ DISPOSAL_INFO = {
     },
 }
 
-
 st.markdown(
     """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-}
-
-.stApp {
-    background: #f7f9f4;
-}
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+.stApp { background: #f7f9f4; }
 
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding-top: 2rem; padding-bottom: 4rem; max-width: 760px; }
 
 [data-testid="stFileUploaderFileName"],
 .stFileUploaderFileName,
-div[class*="stFileUploaderFileName"] {
-    color: #1a2e1a !important;
-}
+div[class*="stFileUploaderFileName"] { color: #1a2e1a !important; }
 
-.hero {
-    text-align: center;
-    padding: 2.5rem 1rem 1.5rem;
-}
+.hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
 .hero-badge {
     display: inline-block;
     background: #e8f5e9;
@@ -183,17 +169,8 @@ div[class*="stFileUploaderFileName"] {
     from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-.result-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-.result-icon {
-    font-size: 3.5rem;
-    line-height: 1;
-    flex-shrink: 0;
-}
+.result-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.result-icon { font-size: 3.5rem; line-height: 1; flex-shrink: 0; }
 .result-label {
     font-family: 'Syne', sans-serif;
     font-size: 0.7rem;
@@ -234,33 +211,7 @@ div[class*="stFileUploaderFileName"] {
 }
 .tip-box strong { color: #1a2e1a; }
 
-.conf-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #5a6b5a;
-    margin-bottom: 0.25rem;
-    margin-top: 1rem;
-}
-.conf-track {
-    height: 8px;
-    background: rgba(0,0,0,0.07);
-    border-radius: 999px;
-    overflow: hidden;
-}
-.conf-fill {
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.how-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 2rem 0 0;
-}
+.how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0 0; }
 .how-card {
     background: white;
     border-radius: 16px;
@@ -276,45 +227,38 @@ div[class*="stFileUploaderFileName"] {
     color: #4CAF50;
     margin-bottom: 0.3rem;
 }
-.how-text {
-    font-size: 0.82rem;
-    color: #5a6b5a;
-    line-height: 1.5;
-}
+.how-text { font-size: 0.82rem; color: #5a6b5a; line-height: 1.5; }
 
-.eco-footer {
-    text-align: center;
-    margin-top: 3rem;
-    font-size: 0.78rem;
-    color: #8a9a8a;
-}
+.eco-footer { text-align: center; margin-top: 3rem; font-size: 0.78rem; color: #8a9a8a; }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
 
+def get_model_path() -> str:
+    return os.path.join(BASE_DIR, "final_model.tflite")
+
+
+def get_labels_path() -> str:
+    return os.path.join(BASE_DIR, "labels.txt")
+
+
 def load_interpreter(model_path: str):
-    try:
-        from tflite_runtime.interpreter import Interpreter  # type: ignore
-        return Interpreter(model_path=model_path)
-    except Exception:
-        from tensorflow.lite.python.interpreter import Interpreter  # type: ignore
-        return Interpreter(model_path=model_path)
+    from tflite_runtime.interpreter import Interpreter  # type: ignore
+    return Interpreter(model_path=model_path)
 
 
 @st.cache_resource
 def get_interpreter():
-    model_path = os.path.join(BASE_DIR, "final_model.tflite")
-    interpreter = load_interpreter(model_path)
+    interpreter = load_interpreter(get_model_path())
     interpreter.allocate_tensors()
     return interpreter
 
 
 @st.cache_data
-def load_labels(path: str = "labels.txt"):
-    labels_path = os.path.join(BASE_DIR, path)
-    with open(labels_path, "r", encoding="utf-8") as f:
+def load_labels():
+    with open(get_labels_path(), "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
 
@@ -359,9 +303,6 @@ def set_input(interpreter, img_arr: np.ndarray, mode: str):
         x = img_arr.astype(np.float32)
         if mode == "0..1":
             x = x / 255.0
-        elif mode == "resnet_preprocess":
-            from tensorflow.keras.applications.resnet50 import preprocess_input  # type: ignore
-            x = preprocess_input(x)
 
     elif dtype == np.uint8:
         x = img_arr.astype(np.float32)
@@ -422,12 +363,14 @@ def predict(pil_img: Image.Image, mode: str, show_debug: bool):
 
 with st.sidebar:
     st.markdown("### Settings")
+
     mode_label = st.selectbox(
         "Input scaling",
-        ["0..255", "0..1", "resnet_preprocess"],
+        ["0..255", "0..1"],
         index=0,
-        help="Choose the scaling that matches how your model was trained.",
+        help="Use 0..255 unless you know your training pipeline used 0..1 scaling.",
     )
+
     show_debug = st.checkbox("Show tensor debug info", value=False)
 
     st.markdown("---")
@@ -435,7 +378,7 @@ with st.sidebar:
     for key, val in DISPOSAL_INFO.items():
         st.markdown(f"{val['icon']} {key.capitalize()}")
 
-mode = {"0..255": "0..255", "0..1": "0..1", "resnet_preprocess": "resnet_preprocess"}[mode_label]
+mode = {"0..255": "0..255", "0..1": "0..1"}[mode_label]
 
 
 st.markdown(
@@ -449,14 +392,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 st.markdown('<span class="upload-label">Upload your item</span>', unsafe_allow_html=True)
 uploaded = st.file_uploader(
     "Choose an image",
     type=["png", "jpg", "jpeg", "webp"],
     label_visibility="collapsed",
 )
-
 
 if uploaded:
     pil_img = Image.open(io.BytesIO(uploaded.read()))
@@ -550,7 +491,6 @@ else:
     """,
         unsafe_allow_html=True,
     )
-
 
 st.markdown(
     """
